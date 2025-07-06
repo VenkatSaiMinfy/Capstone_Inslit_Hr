@@ -5,7 +5,6 @@ import warnings
 
 def add_feature_engineering(df):
     df = df.copy()
-    configure_yaml_dumper()
     # 🎓 Seniority extraction from job title
     def extract_seniority(title):
         title = title.lower()

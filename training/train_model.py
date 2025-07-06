@@ -4,21 +4,25 @@ import mlflow
 import shap
 import numpy as np
 import matplotlib.pyplot as plt
+
 import xgboost as xgb
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, HistGradientBoostingRegressor
+from sklearn.svm import SVR
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.metrics import (
+    mean_absolute_error, r2_score, mean_squared_error, mean_absolute_percentage_error
+)
 
-from sklearn.model_selection import GridSearchCV, train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, r2_score
 from mlflow.tracking import MlflowClient
-
 from features.feature_selection import apply_feature_selection_rf
 from evidently_utils.evidently_logger import log_evidently_report
+
 
 def train_and_evaluate_with_mlflow(df, parent_run_id=None):
     X = df.drop(columns=['adjusted_total_usd', 'adjusted_total_usd_log'])
     y = df['adjusted_total_usd_log']
-    X = X.loc[:, X.std() > 1e-3]  # remove constant features
+    X = X.loc[:, X.std() > 1e-3]
 
     X_selected = apply_feature_selection_rf(X, y, n_features=10)
 
@@ -27,38 +31,45 @@ def train_and_evaluate_with_mlflow(df, parent_run_id=None):
     )
 
     models = {
-        'XGBoost': {
-            'model': xgb.XGBRegressor(objective='reg:squarederror', random_state=42),
-            'params': {
-                'n_estimators': [50, 100],
-                'max_depth': [3, 5],
-                'learning_rate': [0.05, 0.1]
-            }
+        "XGBoost": {
+            "model": xgb.XGBRegressor(objective="reg:squarederror", random_state=42),
+            "params": {"n_estimators": [50], "max_depth": [5], "learning_rate": [0.05]}
         },
-        'RandomForest': {
-            'model': RandomForestRegressor(random_state=42),
-            'params': {
-                'n_estimators': [50, 100],
-                'max_depth': [5, 10]
-            }
+        "RandomForest": {
+            "model": RandomForestRegressor(random_state=42),
+            "params": {"n_estimators": [100], "max_depth": [5]}
         },
-        'LinearRegression': {
-            'model': LinearRegression(),
-            'params': {}
+        "LinearRegression": {
+            "model": LinearRegression(), "params": {}
+        },
+        "GradientBoosting": {
+            "model": GradientBoostingRegressor(random_state=42),
+            "params": {"n_estimators": [100], "learning_rate": [0.1], "max_depth": [5]}
+        },
+        "HistGradientBoosting": {
+            "model": HistGradientBoostingRegressor(random_state=42),
+            "params": {"max_iter": [100]}
+        },
+        "Ridge": {
+            "model": Ridge(), "params": {"alpha": [1.0, 10.0]}
+        },
+        "Lasso": {
+            "model": Lasso(), "params": {"alpha": [0.01, 0.1]}
         }
     }
 
+    best_r2 = -np.inf
     best_model = None
     best_model_name = None
-    best_r2 = -np.inf
     best_run_id = None
-    client = MlflowClient()
     summary = []
+
+    client = MlflowClient()
 
     for name, cfg in models.items():
         with mlflow.start_run(run_name=name, nested=True) as run:
             print(f"\n🔧 Tuning {name}...")
-            gs = GridSearchCV(cfg['model'], cfg['params'], scoring='r2', cv=5, n_jobs=-1)
+            gs = GridSearchCV(cfg["model"], cfg["params"], cv=5, scoring='r2', n_jobs=-1)
             gs.fit(X_train, y_train)
 
             best_estimator = gs.best_estimator_
@@ -68,47 +79,51 @@ def train_and_evaluate_with_mlflow(df, parent_run_id=None):
 
             y_train_pred_log = best_estimator.predict(X_train)
             y_test_pred_log = best_estimator.predict(X_test)
+
             y_train_pred = np.expm1(y_train_pred_log)
             y_test_pred = np.expm1(y_test_pred_log)
             y_train_true = np.expm1(y_train)
             y_test_true = np.expm1(y_test)
 
-            train_mae = mean_absolute_error(y_train_true, y_train_pred)
-            test_mae = mean_absolute_error(y_test_true, y_test_pred)
-            train_r2 = r2_score(y_train_true, y_train_pred)
-            test_r2 = r2_score(y_test_true, y_test_pred)
+            metrics = {
+                "Train_MAE": mean_absolute_error(y_train_true, y_train_pred),
+                "Test_MAE": mean_absolute_error(y_test_true, y_test_pred),
+                "Train_R2": r2_score(y_train_true, y_train_pred),
+                "Test_R2": r2_score(y_test_true, y_test_pred),
+                "Train_RMSE": np.sqrt(mean_squared_error(y_train_true, y_train_pred)),
+                "Test_RMSE": np.sqrt(mean_squared_error(y_test_true, y_test_pred)),
+                "Train_MAPE": mean_absolute_percentage_error(y_train_true, y_train_pred),
+                "Test_MAPE": mean_absolute_percentage_error(y_test_true, y_test_pred),
+            }
 
-            mlflow.log_metrics({
-                "Train_MAE": train_mae,
-                "Train_R2": train_r2,
-                "Test_MAE": test_mae,
-                "Test_R2": test_r2
-            })
+            mlflow.log_metrics(metrics)
+            print(f"✅ {name} → Train R2: {metrics['Train_R2']:.6f}, Test R2: {metrics['Test_R2']:.6f}, "
+                  f"Train MAE: {metrics['Train_MAE']:.2f}, Test MAE: {metrics['Test_MAE']:.2f}")
 
-            print(f"✅ {name} → Train R2: {train_r2:.4f}, Test R2: {test_r2:.4f}, Train MAE: {train_mae:.2f}, Test MAE: {test_mae:.2f}, Params: {best_params}")
-
-            plt.figure(figsize=(5, 3))
-            plt.bar(['Train R2', 'Test R2'], [train_r2, test_r2], color=['green', 'blue'])
-            plt.title(f"{name} R2 Comparison")
-            r2_plot_path = f"{name}_r2_plot.png"
-            plt.savefig(r2_plot_path)
-            mlflow.log_artifact(r2_plot_path)
+            # Plot
+            plt.figure(figsize=(6, 3))
+            plt.bar(["Train R2", "Test R2"], [metrics["Train_R2"], metrics["Test_R2"]], color=["green", "blue"])
+            plt.title(f"{name} R2")
+            plot_path = f"{name}_r2_plot.png"
+            plt.savefig(plot_path)
+            mlflow.log_artifact(plot_path)
             plt.close()
-            os.remove(r2_plot_path)
+            os.remove(plot_path)
 
+            # Log model
             if name == "XGBoost":
                 mlflow.xgboost.log_model(best_estimator, artifact_path="model")
             else:
                 mlflow.sklearn.log_model(best_estimator, artifact_path="model")
 
+            # SHAP
             try:
-                if name in ["XGBoost", "RandomForest"]:
-                    print(f"📌 Generating SHAP summary plot for {name}...")
-                    X_sampled = X_test[:50]
+                if name in ["XGBoost", "RandomForest", "GradientBoosting"]:
+                    print(f"📌 SHAP for {name}...")
                     explainer = shap.Explainer(best_estimator, X_train)
-                    shap_values = explainer(X_sampled)
-                    shap.summary_plot(shap_values, X_sampled, plot_type="bar", show=False)
-                    shap_path = f"{name}_shap_summary_plot.png"
+                    shap_values = explainer(X_test[:50])
+                    shap.summary_plot(shap_values, X_test[:50], plot_type="bar", show=False)
+                    shap_path = f"{name}_shap.png"
                     plt.savefig(shap_path, bbox_inches="tight")
                     mlflow.log_artifact(shap_path)
                     plt.close()
@@ -116,24 +131,32 @@ def train_and_evaluate_with_mlflow(df, parent_run_id=None):
             except Exception as e:
                 print(f"⚠️ SHAP failed: {e}")
 
-            summary.append((name, train_mae, test_mae, train_r2, test_r2, best_params))
+            summary.append((
+                name,
+                metrics["Train_R2"],
+                metrics["Test_R2"],
+                metrics["Train_MAE"],
+                metrics["Test_MAE"],
+                best_params
+            ))
 
-            if test_r2 > best_r2:
-                best_r2 = test_r2
-                best_model_name = name
+            if metrics["Test_R2"] > best_r2:
+                best_r2 = metrics["Test_R2"]
                 best_model = best_estimator
+                best_model_name = name
                 best_run_id = run.info.run_id
 
-    print("\n📈 Summary of All Models:")
+    print("\n📊 Summary of All Models:")
     for s in summary:
-        print(f"• {s[0]:15} | Train R2: {s[3]:.4f} | Test R2: {s[4]:.4f} | Test MAE: {s[2]:.2f} | Params: {s[5]}")
+        print(f"• {s[0]:20} | Train R2: {s[1]:.4f} | Test R2: {s[2]:.4f} | "
+              f"Train MAE: {s[3]:.2f} | Test MAE: {s[4]:.2f} | Params: {s[5]}")
 
-    print(f"\n🏆 Best Model: {best_model_name} with R2 = {best_r2:.4f}")
+    print(f"\n🏆 Best Model: {best_model_name} → Test R2 = {best_r2:.4f}")
 
+    # Register and promote model
     if best_run_id:
-        model_uri = f"runs:/{best_run_id}/model"
-        print("\n📌 Registering & Promoting best model...")
-        mv = mlflow.register_model(model_uri=model_uri, name="PricePredictor")
+        print("\n📌 Registering model...")
+        mv = mlflow.register_model(f"runs:/{best_run_id}/model", name="PricePredictor")
 
         for _ in range(10):
             info = client.get_model_version(name=mv.name, version=mv.version)
@@ -147,9 +170,8 @@ def train_and_evaluate_with_mlflow(df, parent_run_id=None):
             stage="Production",
             archive_existing_versions=True
         )
+        print(f"🚀 Model '{mv.name}' version {mv.version} promoted to Production ✅")
 
-        print(f"🚀 {mv.name} version {mv.version} → Production ✅")
-
-        # ✅ Run Evidently drift report on final train vs test
-        print("\n📊 Logging Evidently drift report...")
-        log_evidently_report(reference_data=X_train, current_data=X_test, dataset_name="train_vs_test")
+        # Evidently drift
+        print("\n📈 Logging Evidently drift report...")
+        log_evidently_report(X_train, X_test, dataset_name="train_vs_test")
