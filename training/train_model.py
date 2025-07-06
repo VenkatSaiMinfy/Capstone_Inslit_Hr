@@ -1,24 +1,21 @@
-import mlflow, shap, os
-from sklearn.model_selection import GridSearchCV, train_test_split
-from features.feature_selection import apply_feature_selection_rf
-import numpy as np 
 import os
 import time
-import matplotlib.pyplot as plt
-import shap
 import mlflow
-import mlflow.sklearn
-import mlflow.xgboost
-from mlflow.tracking import MlflowClient
+import shap
+import numpy as np
+import matplotlib.pyplot as plt
+import xgboost as xgb
 
+from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, r2_score
+from mlflow.tracking import MlflowClient
 
-import xgboost as xgb
 from features.feature_selection import apply_feature_selection_rf
+from evidently_utils.evidently_logger import log_evidently_report
 
-def train_and_evaluate_with_mlflow(df, parent_run_id):
+def train_and_evaluate_with_mlflow(df, parent_run_id=None):
     X = df.drop(columns=['adjusted_total_usd', 'adjusted_total_usd_log'])
     y = df['adjusted_total_usd_log']
     X = X.loc[:, X.std() > 1e-3]  # remove constant features
@@ -152,3 +149,7 @@ def train_and_evaluate_with_mlflow(df, parent_run_id):
         )
 
         print(f"🚀 {mv.name} version {mv.version} → Production ✅")
+
+        # ✅ Run Evidently drift report on final train vs test
+        print("\n📊 Logging Evidently drift report...")
+        log_evidently_report(reference_data=X_train, current_data=X_test, dataset_name="train_vs_test")
