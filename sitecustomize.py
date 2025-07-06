@@ -19,8 +19,8 @@ def configure_yaml_dumper():
                 }
             )
         )
-        print("✅ Patched YAML dumper for mlflow.entities.Metric")
+        print("Patched YAML dumper for mlflow.entities.Metric")
     except Exception as e:
-        print("❌ Failed to patch YAML dumper:", e)
+        print("Failed to patch YAML dumper:", e)
 
 configure_yaml_dumper()
