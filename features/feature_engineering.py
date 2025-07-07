@@ -4,10 +4,11 @@ import re
 import warnings
 
 def add_feature_engineering(df):
-    df = df.copy()
-    # 🎓 Seniority extraction from job title
+    df = df.copy()  # 📋 Work on a copy to avoid modifying the original DataFrame
+
+    # 🎓 Extract seniority level based on keywords in job title
     def extract_seniority(title):
-        title = title.lower()
+        title = title.lower()  # Make case-insensitive
         if re.search(r'(intern|trainee|junior)', title):
             return 'junior'
         elif re.search(r'(senior|sr|lead)', title):
@@ -15,11 +16,11 @@ def add_feature_engineering(df):
         elif re.search(r'(manager|director|head|chief)', title):
             return 'management'
         else:
-            return 'mid'
+            return 'mid'  # Default if no clear match found
 
     df['seniority_level'] = df['job_title'].apply(extract_seniority)
 
-    # 🕒 Experience binning
+    # 🕒 Bin years of experience into custom ranges
     def bin_experience(x):
         if x < 2:
             return '0–2'
@@ -32,10 +33,11 @@ def add_feature_engineering(df):
 
     df['experience_bin'] = df['years_experience'].apply(bin_experience)
 
-    # 🏠 Remote flag from remote_ratio
+    # 🏠 Create a binary flag for full remote jobs (remote_ratio = 100%)
     df['remote_flag'] = df['remote_ratio'].apply(lambda x: 1 if x == 100 else 0)
 
-    # 🌍 Continent mapping from company location (you can expand this as needed)
+    # 🌍 Map company location (country code) to a continent
+    # Extend this dictionary as needed for other country codes
     continent_map = {
         'US': 'North America', 'CA': 'North America',
         'IN': 'Asia', 'CN': 'Asia', 'JP': 'Asia',
@@ -46,9 +48,9 @@ def add_feature_engineering(df):
     }
     df['continent'] = df['company_location'].map(continent_map).fillna('Other')
 
-    # 💱 Currency strength category (manual — you may update rates)
-    strong_currencies = ['USD', 'EUR', 'GBP', 'CHF']
-    weak_currencies = ['INR', 'BRL', 'IDR', 'ZAR']
+    # 💱 Classify currency into strength categories (manual list)
+    strong_currencies = ['USD', 'EUR', 'GBP', 'CHF']  # Strong/Stable currencies
+    weak_currencies = ['INR', 'BRL', 'IDR', 'ZAR']     # Weak/Volatile currencies
 
     def currency_strength(curr):
         if curr in strong_currencies:
@@ -56,8 +58,8 @@ def add_feature_engineering(df):
         elif curr in weak_currencies:
             return 'weak'
         else:
-            return 'mid'
+            return 'mid'  # Default/mid-tier currency
 
     df['currency_strength'] = df['currency'].apply(currency_strength)
 
-    return df
+    return df  # ✅ Return the transformed DataFrame

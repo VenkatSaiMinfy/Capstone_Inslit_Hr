@@ -1,3 +1,4 @@
 mlartifacts/
 Dataset_csv/
 mlruns/
+.env
