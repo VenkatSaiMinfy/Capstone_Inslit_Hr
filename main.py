@@ -1,11 +1,12 @@
-from data.load_data import load_data
+from data.load_data import load_data_from_postgres
 from features.preprocess import preprocess_data
 from features.feature_engineering import add_feature_engineering
 from features.feature_selection import apply_feature_selection_rf
 from training.train_model import train_and_evaluate_with_mlflow
 from analysis.eda import visualize_eda
 import mlflow
-
+import os 
+from CSV_TO_SQL.csv_to_sql import save_processed_to_postgres
 
 def main():
     try:
@@ -15,11 +16,11 @@ def main():
         if mlflow.active_run():
             mlflow.end_run()
 
-        df = load_data()
+        df = load_data_from_postgres(os.getenv('DB_TABLE_NAME'))
         df, encoders, scaler = preprocess_data(df)
         # df = add_feature_engineering(df)
-
-        # ⛔ visual_eda may open an mlflow run internally, so we must end it here
+        save_processed_to_postgres(df, table_name=os.getenv("DB_TABLE_NAME_PROD"))
+        # visual_eda may open an mlflow run internally, so we must end it here
         visualize_eda(df)
 
         # Again ensure any run started inside visualize_eda is closed

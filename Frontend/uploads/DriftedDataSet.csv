@@ -1,0 +1,11 @@
+job_title,experience_level,employment_type,company_size,company_location,remote_ratio,salary_currency,years_experience,base_salary,bonus,stock_options,total_salary,salary_in_usd,currency,education,skills,conversion_rate,adjusted_total_usd
+ML Engineer,Senior,Contract,Medium,Germany,100,INR,13,75248.2,1203.5,21320.1,97771.8,1065.989421,USD,, ,1.05,102660.4
+DevOps Engineer,Lead,Contract,Small,India,100,GBP,9,69364.3,2303.2,21080.2,92747.7,111216.4531,EUR,, ,1.13,104805.9
+Research Scientist,Lead,Contract,Medium,Germany,100,EUR,19,145377.1,3429.3,13564.6,162371.0,167214.1272,EUR,, ,1.17,190973.3
+ML Engineer,Lead,Full-time,Large,India,100,INR,7,155690.3,10345.2,12382.5,178418.0,19512.34864,USD,, ,1.05,187338.9
+ML Engineer,Lead,Intern,Large,Germany,100,INR,10,133654.5,7454.2,894.6,142003.3,1553.317959,INR,, ,0.012,1704.0
+Data Analyst,Senior,Contract,Large,UK,100,EUR,14,63809.3,7060.9,24708.2,95578.4,95578.43424,EUR,, ,1.15,109915.2
+Research Scientist,Lead,Intern,Small,Canada,100,EUR,15,134864.4,5428.2,1773.3,142065.9,146127.8303,INR,, ,0.012,1704.8
+DevOps Engineer,Lead,Intern,Medium,India,100,INR,19,133176.4,8879.3,30346.8,172402.5,1880.789714,USD,, ,1.1,189642.8
+ML Engineer,Senior,Full-time,Large,Canada,100,GBP,12,99365.5,6476.7,10330.6,116172.8,139934.6159,CAD,, ,0.80,92938.2
+Data Analyst,Mid,Full-time,Large,India,100,CAD,7,115669.4,788.7,24606.2,141064.3,96179.99611,INR,, ,0.012,1692.8

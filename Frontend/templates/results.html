@@ -6,27 +6,24 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <div class="container">
-    <h1>📊 Prediction Results</h1>
-    <table>
-      <thead>
+  <h1>📊 Prediction Results</h1>
+  <table border="1">
+    <thead>
+      <tr>
+        {% for col in column_names %}
+          <th>{{ col }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in data %}
         <tr>
-          {% for col in column_names %}
-            <th>{{ col }}</th>
+          {% for item in row %}
+            <td>{{ item }}</td>
           {% endfor %}
         </tr>
-      </thead>
-      <tbody>
-        {% for row in data %}
-          <tr>
-            {% for item in row %}
-              <td>{{ item }}</td>
-            {% endfor %}
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <a href="/" class="back-btn">🔙 Back to Upload</a>
-  </div>
+      {% endfor %}
+    </tbody>
+  </table>
 </body>
 </html>

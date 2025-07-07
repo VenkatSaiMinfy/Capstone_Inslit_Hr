@@ -1,44 +1,28 @@
-'''import pandas as pd
-from sqlalchemy import create_engine
-from dotenv import load_dotenv
-load_dotenv()
-import os
-# 1. Load the CSV file
-csv_file_path = "Dataset_csv/Software_Salaries.csv"  
-df = pd.read_csv(csv_file_path)
-
-# 2. PostgreSQL connection details
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-DB_TABLE=os.getenv('DB_TABLE_NAME')
-
-
-# 3. Create a connection engine
-engine = create_engine(f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
-
-# 4. Load the DataFrame to PostgreSQL
-df.to_sql(DB_TABLE, engine, if_exists='replace', index=False)
-
-print(f"✅ Successfully loaded {len(df)} records into the '{DB_TABLE}' table.")
-
-'''
 import pandas as pd
 from sqlalchemy import create_engine
-import os
 from dotenv import load_dotenv
+import os
 
 load_dotenv()
 
-def save_csv_to_postgres(csv_path):
+def save_csv_to_postgres(csv_path, table_name):
     df = pd.read_csv(csv_path)
-
-    engine = create_engine(f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}")
-    table_name = os.getenv('DB_TABLE_NAME')
-
+    engine = create_engine(
+        f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@"
+        f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
+    )
     df.to_sql(table_name, engine, if_exists='replace', index=False)
+    print(f"✅ Saved {csv_path} to table: {table_name}")
     return df
 
-save_csv_to_postgres("../Dataset_csv/Software_Salaries.csv")
+def save_processed_to_postgres(df, table_name="processed_data"):
+    engine = create_engine(
+        f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@"
+        f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
+    )
+    df.to_sql(table_name, engine, if_exists='replace', index=False)
+    print(f"✅ Processed data saved to PostgreSQL table: {table_name}")
+
+# ✅ Wrap this in a main guard
+if __name__ == "__main__":
+    save_csv_to_postgres('../Dataset_csv/Software_Salaries.csv', os.getenv('DB_TABLE_NAME'))

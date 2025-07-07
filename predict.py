@@ -3,7 +3,8 @@ import os
 import joblib
 import mlflow
 import numpy as np
-
+from data.load_data import load_data_from_postgres
+from evidently_utils.evidently_logger import log_evidently_report
 # Load preprocessing artifacts
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ARTIFACTS_DIR = os.path.join(BASE_DIR, "Backend", "features", "artifacts")
@@ -27,7 +28,10 @@ def make_prediction(df):
     mlflow.set_tracking_uri("http://127.0.0.1:5000")
     os.environ["MLFLOW_ARTIFACT_URI"] = "file:///D:/Final Inslit_HR/mlruns"
 
+    # Load Data
+
     # Preprocess
+
     df_processed = preprocess_input(df)
 
     # Load model from MLflow registry
